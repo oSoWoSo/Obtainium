@@ -1,5 +1,5 @@
 <p>Obtainium allows you to install and update Apps directly from their releases pages, and receive notifications when new releases are made available.</p>
-<p>Read the <a href="https://github.com/ImranR98/Obtainium/wiki">Wiki</a></p>
+<p>Read the <a href="https://wiki.obtainium.imranr.dev/">Wiki</a></p>
 <p>
 	<b>Currently supported App sources:</b>
 </p>
@@ -13,7 +13,6 @@
 			<li>F-Droid</li>
 			<li>Third Party F-Droid Repos</li>
 			<li>IzzyOnDroid</li>
-			<li>SourceForge</li>
 			<li>SourceHut</li>
 		</ul>
 	</li>
@@ -22,24 +21,19 @@
 		<ul>
 			<li>APKPure</li>
 			<li>Aptoide</li>
-			<li>Uptodowng</li>
+			<li>Uptodown</li>
 			<li>APKMirror (Track-Only)</li>
 			<li>Huawei AppGallery</li>
+			<li>Tencent App Store</li>
+			<li>CoolApk</li>
+			<li>vivo App Store (CN)</li>
 			<li>Jenkins Jobs</li>
-		</ul>
-	</li>
-	<li>
-		<p>Open Source - App-Specific:</p>
-		<ul>
-			<li>Mullvad</li>
-			<li>Signal</li>
-			<li>VLC</li>
+			<li>RuStore</li>
 		</ul>
 	</li>
 	<li>
 		<p>Other - App-Specific:</p>
 		<ul>
-			<li>WhatsApp</li>
 			<li>Telegram App</li>
 			<li>Neutron Code</li>
 		</ul>

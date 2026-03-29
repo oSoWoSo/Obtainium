@@ -13,17 +13,21 @@ class SourceHut extends AppSource {
 
     additionalSourceAppSpecificSettingFormItems = [
       [
-        GeneratedFormSwitch('fallbackToOlderReleases',
-            label: tr('fallbackToOlderReleases'), defaultValue: true)
-      ]
+        GeneratedFormSwitch(
+          'fallbackToOlderReleases',
+          label: tr('fallbackToOlderReleases'),
+          defaultValue: true,
+        ),
+      ],
     ];
   }
 
   @override
   String sourceSpecificStandardizeURL(String url, {bool forSelection = false}) {
     RegExp standardUrlRegEx = RegExp(
-        '^https?://(www\\.)?${getSourceRegex(hosts)}/[^/]+/[^/]+',
-        caseSensitive: false);
+      '^https?://(www\\.)?${getSourceRegex(hosts)}/[^/]+/[^/]+',
+      caseSensitive: false,
+    );
     RegExpMatch? match = standardUrlRegEx.firstMatch(url);
     if (match == null) {
       throw InvalidURLError(name);
@@ -52,16 +56,27 @@ class SourceHut extends AppSource {
     String appName = standardUri.pathSegments.last;
     bool fallbackToOlderReleases =
         additionalSettings['fallbackToOlderReleases'] == true;
-    Response res =
-        await sourceRequest('$standardUrl/refs/rss.xml', additionalSettings);
+    Response res = await sourceRequest(
+      '$standardUrl/refs/rss.xml',
+      additionalSettings,
+    );
     if (res.statusCode == 200) {
       var parsedHtml = parse(res.body);
       List<APKDetails> apkDetailsList = [];
       int ind = 0;
 
       for (var entry in parsedHtml.querySelectorAll('item').sublist(0, 6)) {
-        // Limit 5 for speed
-        if (!fallbackToOlderReleases && ind > 0) {
+        ind++;
+        String releasePage = // querySelector('link') fails for some reason
+            entry
+                .querySelector('guid') // Luckily guid is identical
+                ?.innerHtml
+                .trim() ??
+            '';
+        if (!releasePage.startsWith('$standardUrl/refs')) {
+          continue;
+        }
+        if (!fallbackToOlderReleases && ind > 1) {
           break;
         }
         String? version = entry.querySelector('title')?.text.trim();
@@ -69,15 +84,15 @@ class SourceHut extends AppSource {
           throw NoVersionError();
         }
         String? releaseDateString = entry.querySelector('pubDate')?.innerHtml;
-        String releasePage = '$standardUrl/refs/$version';
         DateTime? releaseDate;
         try {
           releaseDate = releaseDateString != null
               ? DateFormat('E, dd MMM yyyy HH:mm:ss Z').parse(releaseDateString)
               : null;
           releaseDate = releaseDateString != null
-              ? DateFormat('EEE, dd MMM yyyy HH:mm:ss Z')
-                  .parse(releaseDateString)
+              ? DateFormat(
+                  'EEE, dd MMM yyyy HH:mm:ss Z',
+                ).parse(releaseDateString)
               : null;
         } catch (e) {
           // ignore
@@ -85,28 +100,35 @@ class SourceHut extends AppSource {
         var res2 = await sourceRequest(releasePage, additionalSettings);
         List<MapEntry<String, String>> apkUrls = [];
         if (res2.statusCode == 200) {
-          apkUrls = getApkUrlsFromUrls(parse(res2.body)
-              .querySelectorAll('a')
-              .map((e) => e.attributes['href'] ?? '')
-              .where((e) => e.toLowerCase().endsWith('.apk'))
-              .map((e) => ensureAbsoluteUrl(e, standardUri))
-              .toList());
+          apkUrls = getApkUrlsFromUrls(
+            parse(res2.body)
+                .querySelectorAll('a')
+                .map((e) => e.attributes['href'] ?? '')
+                .where((e) => e.toLowerCase().endsWith('.apk'))
+                .map((e) => ensureAbsoluteUrl(e, standardUri))
+                .toList(),
+          );
         }
-        apkDetailsList.add(APKDetails(
+        apkDetailsList.add(
+          APKDetails(
             version,
             apkUrls,
-            AppNames(entry.querySelector('author')?.innerHtml.trim() ?? appName,
-                appName),
-            releaseDate: releaseDate));
-        ind++;
+            AppNames(
+              entry.querySelector('author')?.innerHtml.trim() ?? appName,
+              appName,
+            ),
+            releaseDate: releaseDate,
+          ),
+        );
       }
       if (apkDetailsList.isEmpty) {
         throw NoReleasesError();
       }
       if (fallbackToOlderReleases) {
         if (additionalSettings['trackOnly'] != true) {
-          apkDetailsList =
-              apkDetailsList.where((e) => e.apkUrls.isNotEmpty).toList();
+          apkDetailsList = apkDetailsList
+              .where((e) => e.apkUrls.isNotEmpty)
+              .toList();
         }
         if (apkDetailsList.isEmpty) {
           throw NoReleasesError();

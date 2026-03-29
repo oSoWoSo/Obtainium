@@ -167,6 +167,7 @@
     "versionCorrectionDisabled": "Versionskorrigering inaktiverat (plugin verkar inte fungera)",
     "unknown": "Okänd",
     "none": "Ingen",
+    "all": "Alla",
     "never": "Aldrig",
     "latestVersionX": "Senaste Version: {}",
     "installedVersionX": "Installerad Version: {}",
@@ -179,8 +180,6 @@
     "appWithIdOrNameNotFound": "Ingen App funnen med det namnet eller ID",
     "reposHaveMultipleApps": "Förråd kan innehålla flera ApparR",
     "fdroidThirdPartyRepo": "F-Droid Tredjeparts Förråd",
-    "steamMobile": "Steam Mobile",
-    "steamChat": "Steam Chat",
     "install": "Installera",
     "markInstalled": "Märk Installerad",
     "update": "Uppdatera",
@@ -213,6 +212,7 @@
     "uninstallFromDevice": "Avinstallera från Enheten",
     "onlyWorksWithNonVersionDetectApps": "Fungerar bara för Appar med versionsdetektering inaktiverat..",
     "releaseDateAsVersion": "Använd releasedatum som version",
+    "releaseTitleAsVersion": "Använd release-titel som versionssträng",
     "releaseDateAsVersionExplanation": "Det här alternativet bör endast användas för appar där versionsidentifiering inte fungerar korrekt, men ett releasedatum är tillgängligt.",
     "changes": "Ändringar",
     "releaseDate": "Releasedatum",
@@ -222,6 +222,7 @@
     "standardVersionDetection": "Standardversionsdetektering",
     "groupByCategory": "Gruppera via Kategori",
     "autoApkFilterByArch": "Försök att filtrera APK-filer efter CPU-arkitektur om möjligt",
+    "autoLinkFilterByArch": "Försök att filtrera länkar efter CPU-arkitektur om möjligt",
     "overrideSource": "Överskrid Källa",
     "dontShowAgain": "Visa inte detta igen",
     "dontShowTrackOnlyWarnings": "Visa inte 'Följ-Endast' varningar",
@@ -253,10 +254,12 @@
     "verifyLatestTag": "Verifiera 'senaste'-taggen",
     "intermediateLinkRegex": "Filtrera för en \"mellanliggande\" länk att besöka",
     "filterByLinkText": "Filtrera länkar efter länktext",
+    "matchLinksOutsideATags": "Matcha länkar utanför <a>-taggar",
     "intermediateLinkNotFound": "Mellanlänk hittades inte",
     "intermediateLink": "Mellanlänk",
     "exemptFromBackgroundUpdates": "Undta från bakgrundsuppdateringar (om aktiverad)",
-    "bgUpdatesOnWiFiOnly": "Inaktivera Bakgrundsuppdateringar utan WiFi",
+    "bgUpdatesOnWiFiOnly": "Inaktivera Bakgrundsuppdateringar utan Wi-Fi",
+    "bgUpdatesWhileChargingOnly": "Inaktivera bakgrundsuppdateringar när du inte laddar",
     "autoSelectHighestVersionCode": "Välj automatiskt högsta versionskod APK",
     "versionExtractionRegEx": "Version Extraction RegEx",
     "trimVersionString": "Trimma versionssträng med RegEx",
@@ -314,7 +317,32 @@
     "appVerifierInstructionToast": "Dela till AppVerifier och återvänd sedan hit när du är klar.",
     "wiki": "Hjälp/Wiki",
     "crowdsourcedConfigsLabel": "Crowdsourcade appkonfigurationer (använd på egen risk)",
+    "crowdsourcedConfigsShort": "Appkonfigurationer med hjälp av crowdsourcing",
     "allowInsecure": "Tillåt osäkra HTTP-förfrågningar",
+    "stayOneVersionBehind": "Håll dig en version bakom den senaste",
+    "useFirstApkOfVersion": "Välj automatiskt den första av flera APK:er",
+    "refreshBeforeDownload": "Uppdatera appdetaljerna före nedladdning",
+    "tencentAppStore": "Tencent App Store",
+    "coolApk": "CoolApk",
+    "vivoAppStore": "vivo App Store (CN)",
+    "name": "Namn",
+    "smartname": "Namn (Smart)",
+    "sortMethod": "Sorteringsmetod",
+    "welcome": "Välkommen",
+    "documentationLinksNote": "Obtainium GitHub-sidan som länkas nedan innehåller länkar till videor, artiklar, diskussioner och andra resurser som hjälper dig att förstå hur du använder appen.",
+    "batteryOptimizationNote": "Observera att nedladdningar i bakgrunden kan fungera mer tillförlitligt om du inaktiverar OS-batterioptimeringar för Obtainium.",
+    "fileDeletionError": "Misslyckades med att radera filen (försök radera den manuellt och försök sedan igen): \"{}\"",
+    "foregroundService": "Obtainium förgrundstjänst",
+    "foregroundServiceExplanation": "Använd en förgrundstjänst för uppdateringskontroll (mer tillförlitlig, förbrukar mer ström)",
+    "fgServiceNotice": "Detta meddelande krävs för bakgrundsuppdateringskontroll (det kan döljas i OS-inställningarna)",
+    "excludeSecrets": "Utesluta hemligheter",
+    "GHReqPrefix": "Instansen \"sky22333/hubproxy\" för GitHub-förfrågningar",
+    "includeZips": "Inkludera ZIP-filer",
+    "zippedApkFilterRegEx": "Filtrera APK:er inuti ZIP",
+    "googleVerificationWarningP1": "Google har meddelat att alla appar på \"certifierade\" Android-enheter kommer att kräva att utvecklaren skickar personuppgifter direkt till Google.\n\nEftersom utvecklarna av denna app inte samtycker till detta krav kommer Obtainium inte längre att arbeta med certifierade Android-enheter efter den tiden.",
+    "googleVerificationWarningP2": "Gå till https://keepandroidopen.org/ för mer information.",
+    "googleVerificationWarningP3": "Observera att på kort sikt kan det fortsätta att vara möjligt att installera \"overifierade\" (icke-kompatibla) appar genom en \"avancerad flöde\" -process som Google har lovat att genomföra efter bred backlash till deras tillkännagivande, men de har inte detaljerat hur detta skulle fungera så det är oklart om det verkligen kommer att bevara användarfrihet på något praktiskt sätt.\n\nGoogles flytt är ett viktigt steg mot slutet av gratis, allmänt ändamål datorer för individer.\n\nIcke-certifierade operativsystem, som GrapheneOS, bör inte påverkas av detta så länge de får fortsätta att existera.",
+    "multipleSigners": "Flera signers",
     "removeAppQuestion": {
         "one": "Ta Bort App?",
         "other": "Ta Bort Appar?"
@@ -340,16 +368,16 @@
         "other": "{} URL:er"
     },
     "minute": {
-        "one": "{} Minut",
-        "other": "{} Minuter"
+        "one": "{} minut",
+        "other": "{} minuter"
     },
     "hour": {
-        "one": "{} Timme",
-        "other": "{} Timmar"
+        "one": "{} timme",
+        "other": "{} timmar"
     },
     "day": {
-        "one": "{} Dag",
-        "other": "{} Dagar"
+        "one": "{} dag",
+        "other": "{} dagar"
     },
     "clearedNLogsBeforeXAfterY": {
         "one": "Rensade {n} logg (före = {before}, efter = {after})",
@@ -374,5 +402,9 @@
     "apk": {
         "one": "{} APK",
         "other": "{} APK:er"
+    },
+    "certificateHash": {
+        "one": "Certificate Hash",
+        "other": "Certificate Hashes"
     }
 }

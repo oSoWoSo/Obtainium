@@ -15,6 +15,7 @@ import 'package:obtainium/providers/apps_provider.dart';
 import 'package:obtainium/providers/settings_provider.dart';
 import 'package:obtainium/providers/source_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -41,19 +42,115 @@ class _HomePageState extends State<HomePage> {
   bool isLinkActivity = false;
 
   List<NavigationPageItem> pages = [
-    NavigationPageItem(tr('appsString'), Icons.apps,
-        AppsPage(key: GlobalKey<AppsPageState>())),
     NavigationPageItem(
-        tr('addApp'), Icons.add, AddAppPage(key: GlobalKey<AddAppPageState>())),
+      tr('appsString'),
+      Icons.apps,
+      AppsPage(key: GlobalKey<AppsPageState>()),
+    ),
     NavigationPageItem(
-        tr('importExport'), Icons.import_export, const ImportExportPage()),
-    NavigationPageItem(tr('settings'), Icons.settings, const SettingsPage())
+      tr('addApp'),
+      Icons.add,
+      AddAppPage(key: GlobalKey<AddAppPageState>()),
+    ),
+    NavigationPageItem(
+      tr('importExport'),
+      Icons.import_export,
+      const ImportExportPage(),
+    ),
+    NavigationPageItem(tr('settings'), Icons.settings, const SettingsPage()),
   ];
 
   @override
   void initState() {
     super.initState();
     initDeepLinks();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      var sp = context.read<SettingsProvider>();
+      if (!sp.welcomeShown) {
+        await showDialog(
+          context: context,
+          builder: (BuildContext ctx) {
+            return AlertDialog(
+              title: Text(tr('welcome')),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 20,
+                children: [
+                  Text(tr('documentationLinksNote')),
+                  GestureDetector(
+                    onTap: () {
+                      launchUrlString(
+                        'https://github.com/ImranR98/Obtainium/blob/main/README.md',
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    child: Text(
+                      'https://github.com/ImranR98/Obtainium/blob/main/README.md',
+                      style: const TextStyle(
+                        decoration: TextDecoration.underline,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    sp.welcomeShown = true;
+                    Navigator.of(context).pop(null);
+                  },
+                  child: Text(tr('ok')),
+                ),
+              ],
+            );
+          },
+        );
+      }
+      if (!sp.googleVerificationWarningShown && DateTime.now().year == 2026) {
+        await showDialog(
+          context: context,
+          builder: (BuildContext ctx) {
+            return AlertDialog(
+              title: Text(tr('note')),
+              scrollable: true,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 20,
+                children: [
+                  Text(tr('googleVerificationWarningP1')),
+                  GestureDetector(
+                    onTap: () {
+                      launchUrlString(
+                        'https://keepandroidopen.org/',
+                        mode: LaunchMode.externalApplication,
+                      );
+                    },
+                    child: Text(
+                      tr('googleVerificationWarningP2'),
+                      style: const TextStyle(
+                        decoration: TextDecoration.underline,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Text(tr('googleVerificationWarningP3')),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    sp.googleVerificationWarningShown = true;
+                    Navigator.of(context).pop(null);
+                  },
+                  child: Text(tr('ok')),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    });
   }
 
   Future<void> initDeepLinks() async {
@@ -61,14 +158,26 @@ class _HomePageState extends State<HomePage> {
 
     goToAddApp(String data) async {
       switchToPage(1);
-      while (
-          (pages[1].widget.key as GlobalKey<AddAppPageState>?)?.currentState ==
-              null) {
+      while ((pages[1].widget.key as GlobalKey<AddAppPageState>?)
+              ?.currentState ==
+          null) {
         await Future.delayed(const Duration(microseconds: 1));
       }
-      (pages[1].widget.key as GlobalKey<AddAppPageState>?)
-          ?.currentState
+      (pages[1].widget.key as GlobalKey<AddAppPageState>?)?.currentState
           ?.linkFn(data);
+    }
+
+    goToExistingApp(String appId) async {
+      // Go to Apps page
+      switchToPage(0);
+      while ((pages[0].widget.key as GlobalKey<AppsPageState>?)?.currentState ==
+          null) {
+        await Future.delayed(const Duration(microseconds: 1));
+      }
+
+      // Navigate to the app
+      (pages[0].widget.key as GlobalKey<AppsPageState>?)?.currentState
+          ?.openAppById(appId);
     }
 
     interpretLink(Uri uri) async {
@@ -77,48 +186,70 @@ class _HomePageState extends State<HomePage> {
       var data = uri.path.length > 1 ? uri.path.substring(1) : "";
       try {
         if (action == 'add') {
-          await goToAddApp(data);
+          // Ensure apps are loaded
+          AppsProvider appsProvider = context.read<AppsProvider>();
+          while (appsProvider.loadingApps) {
+            await Future.delayed(const Duration(milliseconds: 10));
+          }
+
+          // See if we already have this app
+          String standardizedUrl = SourceProvider()
+              .getSource(data)
+              .standardizeUrl(data);
+
+          AppInMemory? existingApp = appsProvider.apps.values
+              .where((AppInMemory a) => a.app.url == standardizedUrl)
+              .firstOrNull;
+
+          if (existingApp != null) {
+            await goToExistingApp(existingApp.app.id);
+          } else {
+            await goToAddApp(data);
+          }
         } else if (action == 'app' || action == 'apps') {
           var dataStr = Uri.decodeComponent(data);
           if (await showDialog(
-                  context: context,
-                  builder: (BuildContext ctx) {
-                    return GeneratedFormModal(
-                      title: tr('importX', args: [
-                        action == 'app' ? tr('app') : tr('appsString')
-                      ]),
-                      items: const [],
-                      additionalWidgets: [
-                        ExpansionTile(
-                          title: const Text('Raw JSON'),
-                          children: [
-                            Text(
-                              dataStr,
-                              style: const TextStyle(fontFamily: 'monospace'),
-                            )
-                          ],
-                        )
+                context: context,
+                builder: (BuildContext ctx) {
+                  return GeneratedFormModal(
+                    title: tr(
+                      'importX',
+                      args: [
+                        (action == 'app' ? tr('app') : tr('appsString'))
+                            .toLowerCase(),
                       ],
-                    );
-                  }) !=
+                    ),
+                    items: const [],
+                    additionalWidgets: [
+                      ExpansionTile(
+                        title: const Text('Raw JSON'),
+                        children: [
+                          Text(
+                            dataStr,
+                            style: const TextStyle(fontFamily: 'monospace'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              ) !=
               null) {
             // ignore: use_build_context_synchronously
             var appsProvider = context.read<AppsProvider>();
-            var result = await appsProvider.import(action == 'app'
-                ? '{ "apps": [$dataStr] }'
-                : '{ "apps": $dataStr }');
+            var result = await appsProvider.import(
+              action == 'app'
+                  ? '{ "apps": [$dataStr] }'
+                  : '{ "apps": $dataStr }',
+            );
             // ignore: use_build_context_synchronously
             showMessage(
-                tr('importedX', args: [plural('apps', result.key.length)]),
-                context);
-            await appsProvider
-                .checkUpdates(specificIds: result.key.map((e) => e.id).toList())
-                .catchError((e) {
-              if (e is Map && e['errors'] is MultiAppMultiError) {
-                showError(e['errors'].toString(), context);
-              }
-              return <App>[];
-            });
+              tr(
+                'importedX',
+                args: [plural('apps', result.key.length).toLowerCase()],
+              ),
+              context,
+            );
           }
         } else {
           throw ObtainiumError(tr('unknown'));
@@ -130,25 +261,31 @@ class _HomePageState extends State<HomePage> {
 
     // Check initial link if app was in cold state (terminated)
     final appLink = await _appLinks.getInitialLink();
+    var initLinked = false;
     if (appLink != null) {
       await interpretLink(appLink);
+      initLinked = true;
     }
-
     // Handle link when app is in warm state (front or background)
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
-      await interpretLink(uri);
+      if (!initLinked) {
+        await interpretLink(uri);
+      } else {
+        initLinked = false;
+      }
     });
   }
 
-  setIsReversing(int targetIndex) {
-    bool reversing = selectedIndexHistory.isNotEmpty &&
+  void setIsReversing(int targetIndex) {
+    bool reversing =
+        selectedIndexHistory.isNotEmpty &&
         selectedIndexHistory.last > targetIndex;
     setState(() {
       isReversing = reversing;
     });
   }
 
-  switchToPage(int index) async {
+  Future<void> switchToPage(int index) async {
     setIsReversing(index);
     if (index == 0) {
       while ((pages[0].widget.key as GlobalKey<AppsPageState>).currentState !=
@@ -189,65 +326,71 @@ class _HomePageState extends State<HomePage> {
     prevIsLoading = appsProvider.loadingApps;
 
     return WillPopScope(
-        child: Scaffold(
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          body: PageTransitionSwitcher(
-            duration: Duration(
-                milliseconds:
-                    settingsProvider.disablePageTransitions ? 0 : 300),
-            reverse: settingsProvider.reversePageTransitions
-                ? !isReversing
-                : isReversing,
-            transitionBuilder: (
-              Widget child,
-              Animation<double> animation,
-              Animation<double> secondaryAnimation,
-            ) {
-              return SharedAxisTransition(
-                animation: animation,
-                secondaryAnimation: secondaryAnimation,
-                transitionType: SharedAxisTransitionType.horizontal,
-                child: child,
-              );
-            },
-            child: pages
-                .elementAt(selectedIndexHistory.isEmpty
-                    ? 0
-                    : selectedIndexHistory.last)
-                .widget,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        body: PageTransitionSwitcher(
+          duration: Duration(
+            milliseconds: settingsProvider.disablePageTransitions ? 0 : 300,
           ),
-          bottomNavigationBar: NavigationBar(
-            destinations: pages
-                .map((e) =>
-                    NavigationDestination(icon: Icon(e.icon), label: e.title))
-                .toList(),
-            onDestinationSelected: (int index) async {
-              HapticFeedback.selectionClick();
-              switchToPage(index);
-            },
-            selectedIndex:
+          reverse: settingsProvider.reversePageTransitions
+              ? !isReversing
+              : isReversing,
+          transitionBuilder:
+              (
+                Widget child,
+                Animation<double> animation,
+                Animation<double> secondaryAnimation,
+              ) {
+                return SharedAxisTransition(
+                  animation: animation,
+                  secondaryAnimation: secondaryAnimation,
+                  transitionType: SharedAxisTransitionType.horizontal,
+                  child: child,
+                );
+              },
+          child: pages
+              .elementAt(
                 selectedIndexHistory.isEmpty ? 0 : selectedIndexHistory.last,
-          ),
+              )
+              .widget,
         ),
-        onWillPop: () async {
-          if (isLinkActivity &&
-              selectedIndexHistory.length == 1 &&
-              selectedIndexHistory.last == 1) {
-            return true;
-          }
-          setIsReversing(selectedIndexHistory.length >= 2
+        bottomNavigationBar: NavigationBar(
+          destinations: pages
+              .map(
+                (e) =>
+                    NavigationDestination(icon: Icon(e.icon), label: e.title),
+              )
+              .toList(),
+          onDestinationSelected: (int index) async {
+            HapticFeedback.selectionClick();
+            switchToPage(index);
+          },
+          selectedIndex: selectedIndexHistory.isEmpty
+              ? 0
+              : selectedIndexHistory.last,
+        ),
+      ),
+      onWillPop: () async {
+        if (isLinkActivity &&
+            selectedIndexHistory.length == 1 &&
+            selectedIndexHistory.last == 1) {
+          return true;
+        }
+        setIsReversing(
+          selectedIndexHistory.length >= 2
               ? selectedIndexHistory.reversed.toList()[1]
-              : 0);
-          if (selectedIndexHistory.isNotEmpty) {
-            setState(() {
-              selectedIndexHistory.removeLast();
-            });
-            return false;
-          }
-          return !(pages[0].widget.key as GlobalKey<AppsPageState>)
-              .currentState
-              ?.clearSelected();
-        });
+              : 0,
+        );
+        if (selectedIndexHistory.isNotEmpty) {
+          setState(() {
+            selectedIndexHistory.removeLast();
+          });
+          return false;
+        }
+        return !(pages[0].widget.key as GlobalKey<AppsPageState>).currentState!
+            .clearSelected();
+      },
+    );
   }
 
   @override

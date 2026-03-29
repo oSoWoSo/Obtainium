@@ -9,7 +9,6 @@ import 'package:obtainium/app_sources/github.dart';
 import 'package:obtainium/main.dart';
 import 'package:obtainium/providers/apps_provider.dart';
 import 'package:obtainium/providers/source_provider.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_storage/shared_storage.dart' as saf;
@@ -35,7 +34,7 @@ class SettingsProvider with ChangeNotifier {
   // Not done in constructor as we want to be able to await it
   Future<void> initializeSettings() async {
     prefs = await SharedPreferences.getInstance();
-    defaultAppDir = (await getExternalStorageDirectory())!.path;
+    defaultAppDir = (await getAppStorageDir()).path;
     notifyListeners();
   }
 
@@ -48,7 +47,7 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  bool get useShizuku{
+  bool get useShizuku {
     return prefs?.getBool('useShizuku') ?? false;
   }
 
@@ -58,8 +57,8 @@ class SettingsProvider with ChangeNotifier {
   }
 
   ThemeSettings get theme {
-    return ThemeSettings
-        .values[prefs?.getInt('theme') ?? ThemeSettings.system.index];
+    return ThemeSettings.values[prefs?.getInt('theme') ??
+        ThemeSettings.system.index];
   }
 
   set theme(ThemeSettings t) {
@@ -69,8 +68,7 @@ class SettingsProvider with ChangeNotifier {
 
   Color get themeColor {
     int? colorCode = prefs?.getInt('themeColor');
-    return (colorCode != null) ?
-        Color(colorCode) : obtainiumThemeColor;
+    return (colorCode != null) ? Color(colorCode) : obtainiumThemeColor;
   }
 
   set themeColor(Color themeColor) {
@@ -124,8 +122,8 @@ class SettingsProvider with ChangeNotifier {
   }
 
   SortColumnSettings get sortColumn {
-    return SortColumnSettings.values[
-        prefs?.getInt('sortColumn') ?? SortColumnSettings.nameAuthor.index];
+    return SortColumnSettings.values[prefs?.getInt('sortColumn') ??
+        SortColumnSettings.nameAuthor.index];
   }
 
   set sortColumn(SortColumnSettings s) {
@@ -134,8 +132,8 @@ class SettingsProvider with ChangeNotifier {
   }
 
   SortOrderSettings get sortOrder {
-    return SortOrderSettings.values[
-        prefs?.getInt('sortOrder') ?? SortOrderSettings.ascending.index];
+    return SortOrderSettings.values[prefs?.getInt('sortOrder') ??
+        SortOrderSettings.ascending.index];
   }
 
   set sortOrder(SortOrderSettings s) {
@@ -151,6 +149,27 @@ class SettingsProvider with ChangeNotifier {
     return result;
   }
 
+  bool get welcomeShown {
+    return prefs?.getBool('welcomeShown') ?? false;
+  }
+
+  set welcomeShown(bool welcomeShown) {
+    prefs?.setBool('welcomeShown', welcomeShown);
+    notifyListeners();
+  }
+
+  bool get googleVerificationWarningShown {
+    return prefs?.getBool('googleVerificationWarningShown') ?? false;
+  }
+
+  set googleVerificationWarningShown(bool googleVerificationWarningShown) {
+    prefs?.setBool(
+      'googleVerificationWarningShown',
+      googleVerificationWarningShown,
+    );
+    notifyListeners();
+  }
+
   bool checkJustStarted() {
     if (justStarted) {
       justStarted = false;
@@ -163,7 +182,9 @@ class SettingsProvider with ChangeNotifier {
     while (!(await Permission.requestInstallPackages.isGranted)) {
       // Explicit request as InstallPlugin request sometimes bugged
       Fluttertoast.showToast(
-          msg: tr('pleaseAllowInstallPerm'), toastLength: Toast.LENGTH_LONG);
+        msg: tr('pleaseAllowInstallPerm'),
+        toastLength: Toast.LENGTH_LONG,
+      );
       if ((await Permission.requestInstallPackages.request()) ==
           PermissionStatus.granted) {
         return true;
@@ -239,6 +260,15 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  bool? getSettingBool(String settingId) {
+    return prefs?.getBool(settingId) ?? false;
+  }
+
+  void setSettingBool(String settingId, bool value) {
+    prefs?.setBool(settingId, value);
+    notifyListeners();
+  }
+
   Map<String, int> get categories =>
       Map<String, int>.from(jsonDecode(prefs?.getString('categories') ?? '{}'));
 
@@ -262,22 +292,24 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  String? get forcedLocale {
-    var fl = prefs?.getString('forcedLocale');
-    return supportedLocales
-            .where((element) => element.key.toLanguageTag() == fl)
-            .isNotEmpty
+  Locale? get forcedLocale {
+    var flSegs = prefs?.getString('forcedLocale')?.split('-');
+    var fl = flSegs != null && flSegs.isNotEmpty
+        ? Locale(flSegs[0], flSegs.length > 1 ? flSegs[1] : null)
+        : null;
+    var set = supportedLocales.where((element) => element.key == fl).isNotEmpty
         ? fl
         : null;
+    return set;
   }
 
-  set forcedLocale(String? fl) {
+  set forcedLocale(Locale? fl) {
     if (fl == null) {
       prefs?.remove('forcedLocale');
     } else if (supportedLocales
-        .where((element) => element.key.toLanguageTag() == fl)
+        .where((element) => element.key == fl)
         .isNotEmpty) {
-      prefs?.setString('forcedLocale', fl);
+      prefs?.setString('forcedLocale', fl.toLanguageTag());
     }
     notifyListeners();
   }
@@ -286,9 +318,7 @@ class SettingsProvider with ChangeNotifier {
       a.length == b.length && a.union(b).length == a.length;
 
   void resetLocaleSafe(BuildContext context) {
-    if (context.supportedLocales
-        .map((e) => e.languageCode)
-        .contains(context.deviceLocale.languageCode)) {
+    if (context.supportedLocales.contains(context.deviceLocale)) {
       context.resetLocale();
     } else {
       context.setLocale(context.fallbackLocale!);
@@ -306,7 +336,7 @@ class SettingsProvider with ChangeNotifier {
   }
 
   bool get checkUpdateOnDetailPage {
-    return prefs?.getBool('checkUpdateOnDetailPage') ?? true;
+    return prefs?.getBool('checkUpdateOnDetailPage') ?? false;
   }
 
   set checkUpdateOnDetailPage(bool show) {
@@ -347,6 +377,15 @@ class SettingsProvider with ChangeNotifier {
 
   set bgUpdatesOnWiFiOnly(bool val) {
     prefs?.setBool('bgUpdatesOnWiFiOnly', val);
+    notifyListeners();
+  }
+
+  bool get bgUpdatesWhileChargingOnly {
+    return prefs?.getBool('bgUpdatesWhileChargingOnly') ?? false;
+  }
+
+  set bgUpdatesWhileChargingOnly(bool val) {
+    prefs?.setBool('bgUpdatesWhileChargingOnly', val);
     notifyListeners();
   }
 
@@ -434,12 +473,19 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  bool get exportSettings {
-    return prefs?.getBool('exportSettings') ?? false;
+  int get exportSettings {
+    try {
+      return prefs?.getInt('exportSettings') ??
+          1; // 0 for no, 1 for yes but no secrets, 2 for everything
+    } catch (e) {
+      var val = prefs?.getBool('exportSettings') == true ? 1 : 0;
+      prefs?.setInt('exportSettings', val);
+      return val;
+    }
   }
 
-  set exportSettings(bool val) {
-    prefs?.setBool('exportSettings', val);
+  set exportSettings(int val) {
+    prefs?.setInt('exportSettings', val > 2 || val < 0 ? 1 : val);
     notifyListeners();
   }
 
@@ -453,7 +499,8 @@ class SettingsProvider with ChangeNotifier {
   }
 
   List<String> get searchDeselected {
-    return prefs?.getStringList('searchDeselected') ?? [];
+    return prefs?.getStringList('searchDeselected') ??
+        SourceProvider().sources.map((s) => s.name).toList();
   }
 
   set searchDeselected(List<String> list) {
@@ -467,6 +514,24 @@ class SettingsProvider with ChangeNotifier {
 
   set beforeNewInstallsShareToAppVerifier(bool val) {
     prefs?.setBool('beforeNewInstallsShareToAppVerifier', val);
+    notifyListeners();
+  }
+
+  bool get shizukuPretendToBeGooglePlay {
+    return prefs?.getBool('shizukuPretendToBeGooglePlay') ?? false;
+  }
+
+  set shizukuPretendToBeGooglePlay(bool val) {
+    prefs?.setBool('shizukuPretendToBeGooglePlay', val);
+    notifyListeners();
+  }
+
+  bool get useFGService {
+    return prefs?.getBool('useFGService') ?? false;
+  }
+
+  set useFGService(bool val) {
+    prefs?.setBool('useFGService', val);
     notifyListeners();
   }
 }
